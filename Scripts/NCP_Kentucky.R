@@ -30,8 +30,7 @@ library(zoo)
 # the raw data can be downloaded from the University of Kentucky's Veterinary Diagnostic Laboratory (VDL) Dashboard: Historical
 # picture of nocardioform placentitis in Kentucky 
 
-# https://nam04.safelinks.protection.outlook.com/?url=http%3A%2F%2Fvdl.uky.edu%3A8080%2Finformer%2FDashboardViewer.html%3Flocale%3Den_US%26embedToken%3Dd58d8dbf-bef0-4619-b57c-9d4343260338&data=02%7C01%7Chfwiem2%40uky.edu%7Cfa8358fd86d54918098808d7a8e987b4%7C2b30530b69b64457b818481cb53d42ae%7C0%7C0%7C637163593278757986&sdata=xctfebsHFsOyY%2BttUSbOzFvXJHJUAfO9bgrfQv17oL4%3D&reserved=0
-
+# http://vdlmaps.vdl.uky.edu:8080/informer/DashboardViewer.html?locale=en_US&embedToken=d58d8dbf-bef0-4619-b57c-9d4343260338
 
 # Using read.csv() to read all downloaded csv-files, put in list
 # bind with rbind
@@ -60,6 +59,9 @@ NCP$WeekYear <- as.character(strftime((NCP$SubmittedDate), "%Y-%U",tz="CET"))
 
 NCP$WeekDate <- cut(as.Date(NCP$SubmittedDate), "week",start.on.monday = FALSE)
 
+NCP$Month <- as.character(strftime((NCP$SubmittedDate), "%m",tz="CET"))
+NCP$MonthDate <- as.Date(paste(NCP$Year, NCP$Month, "01", sep="-"), "%Y-%m-%d")
+
 ################################################################
 
 ### aggregate by week
@@ -67,6 +69,11 @@ NCP$WeekDate <- cut(as.Date(NCP$SubmittedDate), "week",start.on.monday = FALSE)
 NCP_week <- aggregate(NCP, by=list(NCP$WeekDate), FUN=length)[,1:2]
 colnames(NCP_week) <- c("WeekDate","Count")
 NCP_week$WeekDate <- as.Date(NCP_week$WeekDate, "%Y-%m-%d")
+
+### aggregate by month
+
+NCP_month <- aggregate(NCP, by=list(NCP$MonthDate), FUN=length)[,1:2]
+colnames(NCP_month) <- c("MonthDate","Count")
 
 
 ################################################################
@@ -76,7 +83,6 @@ NCP_week$WeekDate <- as.Date(NCP_week$WeekDate, "%Y-%m-%d")
 ### histogram
 
 hist(as.numeric(NCP$Week))
-
 
 ### NCP cases per week since 2010
 
@@ -89,6 +95,22 @@ ggplot(NCP_week)+
        #subtitle ='',
        #caption = '',
        x = '', y="Count per week")
+
+ggsave("NCP_by_week_since2010.png", width=8, height=5)
+
+### NCP cases per month since 2010
+
+theme_set(theme_bw())
+ggplot(NCP_month)+
+  geom_line(aes(x=MonthDate,y=Count))+
+  scale_x_date(#limits = c(as.Date("2019-01-01"), NA),
+    date_breaks = '2 year', date_labels = '%Y')+
+  labs(title = 'Equine nocardioform placentitis in Kentucky',
+       #subtitle ='',
+       #caption = '',
+       x = '', y="Count per month")
+
+ggsave("NCP_by_month_since2010.png", width=8, height=5)
 
 ################################################################
 
@@ -106,6 +128,7 @@ ggplot(NCP_week)+
   theme(axis.text.x = element_text(angle = 90,hjust = 1, vjust = 0.5),
         strip.text=element_text(size=10))
 
+ggsave("NCP_by_week_since2019.png", width=8, height=5)
 
 ################################################################
 
@@ -152,7 +175,7 @@ state_centered$centered_low = exp(state_centered$ma - (state_centered$upper)) - 
 options(repr.plot.width=8, repr.plot.height=5)
 b = ggplot(state_centered, aes(x=WeekDate, y=centered)) + geom_line() +
  geom_ribbon(aes(ymin=centered_low, ymax=centered_high), alpha = 0.2) +
- labs(x = "Time", y = "Weekly Deaths [x over 2010-2020 median]", title="Weekly deaths from neocardioform placentis") + 
+ labs(x = "Time", y = "Weekly Deaths [x over 2010-2020 median]", title="Weekly deaths from nocardioform placentitis") + 
 theme_gray(base_size = 14) 
 
 ggsave("excessNCP.png", width=8, height=5)
