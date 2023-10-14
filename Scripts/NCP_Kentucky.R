@@ -35,7 +35,7 @@ library(zoo)
 # Using read.csv() to read all downloaded csv-files, put in list
 # bind with rbind
 
-list_csv_files <- list.files(path = "~/animal_mortality/RawData/NCP",
+list_csv_files <- list.files(path = "~/animal_mortality/RawData/NCP2023",
                              pattern="*.csv", full.names = TRUE)
 NCP = do.call(rbind, lapply(list_csv_files, function(x) read.csv(x, stringsAsFactors = FALSE)))
 
@@ -137,27 +137,35 @@ ggsave("NCP_by_week_since2019.png", width=8, height=5)
 find_median = function(values, dates, train_before=2020) {
     idx = year(dates) < train_before
     state_deaths = data.frame(weeks=MMWRweek(NCP_week$WeekDate)$MMWRweek, values=values, dates=dates)
-    median = state_deaths[idx,] %>% group_by(weeks) %>% summarise(med = median(values, na.rm=TRUE))
-    merged = merge(state_deaths, median, by="weeks")
-    merged$med[order(merged$dates)]
+    median = state_deaths[idx,] %>% group_by(weeks) %>% summarise(med = median(values, na.rm=FALSE))
+    median = median[median[,"weeks"] != 53, ]
+    merged = merge(state_deaths, median, by="weeks", all.x=TRUE)
+    merged = merged %>% arrange(dates) %>% mutate(interp = na.approx(med, na.rm=FALSE))
+    merged$interp
 }
 find_quantile = function(values, dates, q = .95, train_before=2020) {
     idx = year(dates) < train_before
     state_deaths = data.frame(weeks=MMWRweek(NCP_week$WeekDate)$MMWRweek, values=values, dates=dates)
-    median = state_deaths[idx,] %>% group_by(weeks) %>% summarise(est = quantile(values, probs=c(q), na.rm=TRUE))
-    merged = merge(state_deaths, median, by="weeks")
-    merged$est[order(merged$dates)]
+    median = state_deaths[idx,] %>% group_by(weeks) %>% summarise(est = quantile(values, probs=c(q), na.rm=FALSE))
+    median = median[median[,"weeks"] != 53, ]
+    merged = merge(state_deaths, median, by="weeks", all.x=TRUE)
+    merged = merged %>% arrange(dates) %>% mutate(interp = na.approx(est, na.rm=FALSE))
+    merged$interp
 }
 find_sd = function(values, dates, train_before=2020) {
     idx = year(dates) < train_before
     state_deaths = data.frame(weeks=MMWRweek(NCP_week$WeekDate)$MMWRweek, values=values, dates=dates)
     std = state_deaths[idx,] %>% group_by(weeks) %>% summarise(std = sd(values, na.rm=TRUE) / sqrt(length(values)))
-    merged = merge(state_deaths, std, by="weeks")
-    merged$std[order(merged$dates)]
+    merged = merge(state_deaths, std, by="weeks", all.x=TRUE)
+    merged = merged %>% arrange(dates) %>% mutate(interp = na.approx(std, na.rm=FALSE))
+    merged$interp
 }
 
 
 NCP_week = NCP_week %>% mutate(ma=rollapply(log(Count, base = exp(1)),6,mean,align='center',fill=NA))
+NCP_week["weeks"] = MMWRweek(NCP_week$WeekDate)$MMWRweek
+NCP_week = NCP_week %>% fill(ma) %>% fill(ma, .direction = "up")
+
 
 state_centered = NCP_week %>% reframe(
     ma = ma,
@@ -171,12 +179,12 @@ state_centered = NCP_week %>% reframe(
 state_centered$centered = exp(state_centered$ma - state_centered$median) - 1
 state_centered$centered_high = exp(state_centered$ma - (state_centered$lower)) - 1
 state_centered$centered_low = exp(state_centered$ma - (state_centered$upper)) - 1
+state_centered = drop_na(state_centered)
 
 options(repr.plot.width=8, repr.plot.height=5)
 b = ggplot(state_centered, aes(x=WeekDate, y=centered)) + geom_line() +
  geom_ribbon(aes(ymin=centered_low, ymax=centered_high), alpha = 0.2) +
  labs(x = "Time", y = "Weekly Deaths [x over 2010-2020 median]", title="Weekly deaths from nocardioform placentitis") + 
 theme_gray(base_size = 14) 
-
 ggsave("excessNCP.png", width=8, height=5)
 
