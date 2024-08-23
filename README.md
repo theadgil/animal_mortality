@@ -4,5 +4,5 @@ This repository contains Supporting Information for the manuscript by D. Gilbert
 # Installing packages
 ```
 install.packages(c("MMWRweek", "ggplot2", "lubridate", "dplyr",
-"tidyr", "zoo"))
+"tidyr", "zoo", "forecast"))
 ```
