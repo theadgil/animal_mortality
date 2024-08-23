@@ -40,28 +40,33 @@ length(test_data)
 
 
 # Fit SARIMA model
+tsdisplay(train_data)
 model <- auto.arima(train_data, seasonal = TRUE)
+# Coefficients:
+#          ar1     ar2      ma1    mean
+#       0.7072  0.1770  -0.3600  8.9617
+# s.e.  0.1596  0.1285   0.1485  0.2312
 
-# Print model summary
+# sigma^2 = 0.3031:  log likelihood = -124.2
+# AIC=258.4   AICc=258.81   BIC=273.55
 
+acf2(train_data)
+themodel = arima(train_data, order = c(2,0,1), seasonal = list(order = c(0,1,1), period = 52))
 # Forecast for the next year (52 weeks)
 prediction_length = 52
-forecast_result <- forecast(model, h = prediction_length)
-length(forecast_result$x)
-length(forecast_result$mean)
-# Plot the forecast
-plot(forecast_result)
-plot(time(train_data), train_data, type="l")
-plot(time(test_data), test_data, type="l")
+test_hat = predict(themodel, n.ahead=prediction_length)
 
-lines(test_data, col = "red")
+# Print model summary
+summary(themodel)
+checkresiduals(themodel)
+autoplot(themodel)
 
 # Calculate excess cases
 observed <- as.vector(test_data)
 predicted <- as.vector(forecast_result$mean)
 upper_pi <- as.vector(forecast_result$upper[,2])  # 95% prediction interval
-xts_predicted = xts(predicted, order.by=time(test_data)[1:prediction_length])
-xts_upper = xts(upper_pi, order.by=time(test_data)[1:prediction_length])
+xts_predicted = xts(test_hat$pred, order.by=time(test_data)[1:prediction_length])
+xts_upper = xts(test_hat$pred + test_hat$se * 2, order.by=time(test_data)[1:prediction_length])
 
 # Ensure observed and upper_pi have the same length
 excess_cases <- pmax(observed[1:length(upper_pi)] - upper_pi, 0)
@@ -72,15 +77,15 @@ cat("Estimated total excess cases:", round(total_excess, 2), "\n")
 # Visualize with LOESS smoothing
 all_data <- c(as.vector(train_data), as.vector(test_data))
 all_dates <- c(time(train_data), time(test_data))  # Use all dates
-length(all_data)
-length(all_dates)
 loess_fit <- loess(all_data ~ as.numeric(all_dates), span = 0.2)
 smoothed <- predict(loess_fit)
 
 ggplot() +
-  geom_line(aes(x = all_dates, y = all_data), color = "blue") +
-  geom_line(aes(x = all_dates, y = smoothed), color = "red") +
-  geom_line(aes(x = time(xts_predicted), y = xts_predicted), color = "green") +
+  geom_line(aes(x = all_dates, y = all_data, color = "observed")) +
+  geom_line(aes(x = all_dates, y = smoothed, color = "smooth")) +
+  geom_line(aes(x = time(test_data[1:prediction_length]), y = test_hat$pred, color = "estimate")) +
+  geom_line(aes(x = time(test_data[1:prediction_length]), y = xts_upper, color = "95th conf.int.")) +
+  scale_color_manual(name = "Y series", values = c("smooth" = "red", "observed" = "black", "estimate" = "darkblue", "95th conf.int." = "darkgreen")) + 
   labs(title = "Observed Data with LOESS Smoothing",
        x = "Date", y = "Count") +
   theme_minimal()
