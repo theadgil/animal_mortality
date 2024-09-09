@@ -128,11 +128,10 @@ insamplePI <- function(model, confidence_level) {
 # Load external data sets
 # set path as needed
 
-dog <- read.csv("~/Corona/Manuscript/RawData/dogs.csv", sep=";")
-NCP <- read.csv("~/Corona/Manuscript/OutFiles/NCP_by_week.csv", sep=";")
-inf <- read.csv("~/Corona/Mortality Data/influenza_formatted.csv", sep=";")
-Elm <- read.csv("~/Corona/Mortality Data/Elmore_data.csv", sep=";")
-Elm2 <- read.csv("~/Corona/Mortality Data/ElmoreFig2B_data.csv", sep=";")
+dog <- read.csv("RawData/dogs.csv", sep=";")
+NCP <- read.csv("OutFiles/NCP_by_week.csv", sep=";")
+inf <- read.csv("RawData/influenza_formatted.csv", sep=";")
+Elm <- read.csv("RawData/ElmoreFig2B_data.csv", sep=";")
 
 ######################################
 
